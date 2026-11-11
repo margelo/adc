@@ -4,16 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-device-cloud-cli"
-version = "0.1.0"
-description = "Command-line client for Cloud Devices"
+version = "0.2.0"
+description = "CLI and MCP client for Cloud Devices"
 requires-python = ">=3.12"
 dependencies = [
   "httpx==0.28.1",
   "websockets==17.4",
 ]
 
+[project.optional-dependencies]
+mcp = ["mcp==2.3.0"]
+
 [project.scripts]
 adc = "clients.cli:main"
+adc-mcp = "clients.mcp_server:main"
 
 [tool.setuptools]
 packages = ["clients"]

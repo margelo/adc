@@ -3,9 +3,9 @@ class Adc < Formula
 
   desc "CLI for Margelo Cloud Devices"
   homepage "https://platform.margelo.com"
-  url "https://github.com/margelo/adc/releases/download/v0.1.0/agent-device-cloud-cli-0.1.0.tar.gz"
-  sha256 "d62bb0550b61461502c9ef129400081fb6681d34b2ba6bec28551ab76aad767b"
-  version "0.1.0"
+  url "https://github.com/margelo/adc/releases/download/v0.2.0/agent-device-cloud-cli-0.2.0.tar.gz"
+  sha256 "2b36ef60ea506b0258c75746289d208640c54e9cc5f24d3a2000daa2a379a8b9"
+  version "0.2.0"
 
   depends_on "python@3.14"
 
@@ -59,7 +59,8 @@ class Adc < Formula
     python = Formula["python@3.14"].opt_bin/"python3.14"
     venv = virtualenv_create(libexec, python, system_site_packages: false)
     venv.pip_install resources, build_isolation: false
-    venv.pip_install_and_link buildpath, build_isolation: false
+    venv.pip_install buildpath, build_isolation: false
+    bin.install_symlink libexec/"bin/adc"
   end
 
   def caveats
@@ -72,5 +73,6 @@ class Adc < Formula
   test do
     assert_match "On-demand Android devices", shell_output("#{bin}/adc --help")
     assert_match "--switch", shell_output("#{bin}/adc login --help")
+    refute_predicate bin/"adc-mcp", :exist?
   end
 end

@@ -1,6 +1,6 @@
 # ADC
 
-Use Cloud Devices from your terminal or GitHub Actions.
+Use Cloud Devices from your terminal, GitHub Actions, or an MCP client.
 
 ## Homebrew
 
@@ -26,13 +26,39 @@ adc run --name smoke -- adb shell getprop sys.boot_completed
 Give the runner access to `adb` and store your Cloud Devices API key as the `ADC_API_KEY` repository secret. Add this step to your workflow.
 
 ```yaml
-- uses: margelo/adc@v0.1.0
+- uses: margelo/adc@v0.2.0
   with:
     api-key: ${{ secrets.ADC_API_KEY }}
     command: adb shell getprop sys.boot_completed
 ```
 
 The action uses the same CLI and releases the device when the command exits. Use `api-url` to select a different API environment.
+
+## MCP
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create a Cloud Devices API key in Platform. Add this configuration to an MCP client that supports local stdio servers.
+
+```json
+{
+  "mcpServers": {
+    "cloud-devices": {
+      "command": "uvx",
+      "args": [
+        "--python",
+        "3.12",
+        "--from",
+        "agent-device-cloud-cli[mcp] @ git+https://github.com/margelo/adc.git@v0.2.0",
+        "adc-mcp"
+      ],
+      "env": {
+        "ADC_API_KEY": "<your-cloud-devices-api-key>"
+      }
+    }
+  }
+}
+```
+
+The server can provision, inspect, list, connect to, and release devices, and report usage. Install Android Platform Tools on the same machine to run the `adb` command returned by `connect_device`. Release the device when finished.
 
 ## Build the release archive
 
