@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-device-cloud-cli"
+version = "0.1.0"
+description = "Command-line client for Cloud Devices"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx==0.28.1",
+  "websockets==17.4",
+]
+
+[project.scripts]
+adc = "clients.cli:main"
+
+[tool.setuptools]
+packages = ["clients"]

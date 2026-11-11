@@ -1,0 +1,40 @@
+name: Agent Device Cloud
+description: Provision an Android device, run a command through ADB and release it
+inputs:
+  api-url:
+    description: Optional HTTPS API origin override; otherwise uses the client's default
+    required: false
+  api-key:
+    description: Account API key stored in GitHub Actions secrets
+    required: true
+  command:
+    description: Command to run with ANDROID_SERIAL set to the connected device
+    required: true
+  name:
+    description: Lease name
+    default: GitHub Actions
+  provision-timeout-seconds:
+    description: Maximum wait for a newly bootstrapped cloud device
+    default: '600'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.12'
+    - name: Install Device Cloud client
+      shell: bash
+      env:
+        ADC_ACTION_PATH: ${{ github.action_path }}
+      run: python -m pip install "$ADC_ACTION_PATH"
+    - name: Run with a fresh Android device
+      shell: bash
+      env:
+        ADC_API_URL: ${{ inputs.api-url }}
+        ADC_API_KEY: ${{ inputs.api-key }}
+        ADC_COMMAND: ${{ inputs.command }}
+        ADC_NAME: ${{ inputs.name }}
+        ADC_TIMEOUT: ${{ inputs.provision-timeout-seconds }}
+      run: |
+        command -v adb >/dev/null || { echo 'Install Android platform-tools before using this action.' >&2; exit 1; }
+        adc run --name "$ADC_NAME" --purpose ci --timeout "$ADC_TIMEOUT" -- bash -euc "$ADC_COMMAND"
