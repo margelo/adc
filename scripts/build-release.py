@@ -15,6 +15,7 @@ CLIENT_MODULES = (
     'connections.py',
     'credentials.py',
     'login.py',
+    'mcp_server.py',
     'relay.py',
 )
 
