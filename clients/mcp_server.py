@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from mcp.server.mcpserver import MCPServer
 
-from clients.api import CloudClient
+from clients.api import CloudClient, FormFactor
 from clients.relay import AdbRelay
 
 connections: dict[str, tuple[CloudClient, AdbRelay]] = {}
@@ -42,12 +42,13 @@ async def provision_device(
     name: str, purpose: str = "development",
     api_level: int | None = None, width: int | None = None,
     height: int | None = None, dpi: int | None = None,
+    form_factor: FormFactor | None = None,
 ) -> dict:
-    """Request a device with optional API level, width and height in pixels, and DPI. See list_device_options for defaults and limits. Poll get_device until active."""
+    """Request a device with optional form factor, API level, width and height in pixels, and DPI. See list_device_options for defaults and limits. Poll get_device until active."""
     client = CloudClient.from_env()
     try:
         return await client.provision(
-            name, purpose, api_level=api_level, width=width, height=height, dpi=dpi,
+            name, purpose, form_factor=form_factor, api_level=api_level, width=width, height=height, dpi=dpi,
         )
     finally:
         await client.close()
@@ -55,7 +56,7 @@ async def provision_device(
 
 @server.tool()
 async def list_device_options() -> dict:
-    """List available Android versions, display limits and device defaults."""
+    """List available device form factors, Android versions, display limits and defaults."""
     return await call("GET", "/v1/device-options")
 
 

@@ -13,6 +13,9 @@ inputs:
   name:
     description: Lease name
     default: GitHub Actions
+  form-factor:
+    description: Optional device form factor from adc device-options (phone or tv)
+    required: false
   api-level:
     description: Optional Android API level from adc device-options
     required: false
@@ -46,6 +49,7 @@ runs:
         ADC_API_KEY: ${{ inputs.api-key }}
         ADC_COMMAND: ${{ inputs.command }}
         ADC_NAME: ${{ inputs.name }}
+        ADC_FORM_FACTOR: ${{ inputs.form-factor }}
         ADC_API_LEVEL: ${{ inputs.api-level }}
         ADC_WIDTH: ${{ inputs.width }}
         ADC_HEIGHT: ${{ inputs.height }}
@@ -54,6 +58,9 @@ runs:
       run: |
         command -v adb >/dev/null || { echo 'Install Android platform-tools before using this action.' >&2; exit 1; }
         adc_args=(--name "$ADC_NAME" --purpose ci --timeout "$ADC_TIMEOUT")
+        if [[ -n "$ADC_FORM_FACTOR" ]]; then
+          adc_args+=(--form-factor="$ADC_FORM_FACTOR")
+        fi
         if [[ -n "$ADC_API_LEVEL" ]]; then
           adc_args+=(--api-level="$ADC_API_LEVEL")
         fi

@@ -27,7 +27,7 @@ async def run_command(client, args):
         raise CloudError("Provide a command after --")
     lease = await client.provision(
         args.name, args.purpose,
-        api_level=args.api_level, width=args.width, height=args.height, dpi=args.dpi,
+        form_factor=args.form_factor, api_level=args.api_level, width=args.width, height=args.height, dpi=args.dpi,
     )
     lease_id = lease["id"]
     process = None
@@ -91,7 +91,7 @@ async def execute(args):
         if args.action == "provision":
             lease = await client.provision(
                 args.name, args.purpose, args.idempotency_key,
-                api_level=args.api_level, width=args.width, height=args.height, dpi=args.dpi,
+                form_factor=args.form_factor, api_level=args.api_level, width=args.width, height=args.height, dpi=args.dpi,
             )
             if args.wait:
                 try:
@@ -140,6 +140,7 @@ def parser():
         item.add_argument("--name", default="Android device")
         item.add_argument("--purpose", choices=["development", "ci"], default="ci")
         item.add_argument("--timeout", type=int, default=600)
+        item.add_argument("--form-factor", choices=["phone", "tv"], help="Device form factor from adc device-options")
         item.add_argument("--api-level", type=int, help="Android API level from adc device-options")
         item.add_argument("--width", type=int, help="Display width in pixels")
         item.add_argument("--height", type=int, help="Display height in pixels")
@@ -151,7 +152,7 @@ def parser():
         if name == "connect":
             item.add_argument("--port", type=int, default=0, help="Local ADB port; chooses an available port by default")
     sub.add_parser("leases")
-    sub.add_parser("device-options", help="List Android versions, display limits and device defaults")
+    sub.add_parser("device-options", help="List device form factors, Android versions and display settings")
     sub.add_parser("usage")
     return root
 

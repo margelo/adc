@@ -2,6 +2,7 @@ import asyncio
 import os
 import time
 import uuid
+from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -10,6 +11,7 @@ from clients.credentials import CredentialError, load_credentials
 
 
 DEFAULT_API_URL = "https://api.agentdevicecloud.xyz"
+FormFactor = Literal["phone", "tv"]
 
 
 class CloudError(RuntimeError):
@@ -84,12 +86,15 @@ class CloudClient:
         self, name: str, purpose: str, idempotency_key: str | None = None,
         *, api_level: int | None = None, width: int | None = None,
         height: int | None = None, dpi: int | None = None,
+        form_factor: FormFactor | None = None,
     ):
         if idempotency_key is None:
             identifier = uuid.uuid4()
             idempotency_key = str(identifier)
         body = {"name": name, "purpose": purpose, "idempotency_key": idempotency_key}
-        device_options = {"api_level": api_level, "width": width, "height": height, "dpi": dpi}
+        device_options = {
+            "form_factor": form_factor, "api_level": api_level, "width": width, "height": height, "dpi": dpi,
+        }
         for key, value in device_options.items():
             if value is not None:
                 body[key] = value
