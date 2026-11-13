@@ -80,11 +80,19 @@ class CloudClient:
             raise CloudError(f"API {response.status_code}: {detail}")
         return response.json()
 
-    async def provision(self, name: str, purpose: str, idempotency_key: str | None = None):
+    async def provision(
+        self, name: str, purpose: str, idempotency_key: str | None = None,
+        *, api_level: int | None = None, width: int | None = None,
+        height: int | None = None, dpi: int | None = None,
+    ):
         if idempotency_key is None:
             identifier = uuid.uuid4()
             idempotency_key = str(identifier)
         body = {"name": name, "purpose": purpose, "idempotency_key": idempotency_key}
+        device_options = {"api_level": api_level, "width": width, "height": height, "dpi": dpi}
+        for key, value in device_options.items():
+            if value is not None:
+                body[key] = value
         return await self.request("POST", "/v2/leases", body)
 
     async def release(self, lease_id: str):

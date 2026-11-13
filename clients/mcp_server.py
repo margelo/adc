@@ -38,13 +38,25 @@ async def call(method: str, path: str, body=None):
 
 
 @server.tool()
-async def provision_device(name: str, purpose: str = "development") -> dict:
-    """Request a fresh device. Poll get_device until status is active; provisioning can take several minutes."""
+async def provision_device(
+    name: str, purpose: str = "development",
+    api_level: int | None = None, width: int | None = None,
+    height: int | None = None, dpi: int | None = None,
+) -> dict:
+    """Request a device with optional API level, width and height in pixels, and DPI. See list_device_options for defaults and limits. Poll get_device until active."""
     client = CloudClient.from_env()
     try:
-        return await client.provision(name, purpose)
+        return await client.provision(
+            name, purpose, api_level=api_level, width=width, height=height, dpi=dpi,
+        )
     finally:
         await client.close()
+
+
+@server.tool()
+async def list_device_options() -> dict:
+    """List available Android versions, display limits and device defaults."""
+    return await call("GET", "/v1/device-options")
 
 
 @server.tool()
