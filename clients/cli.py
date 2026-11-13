@@ -25,7 +25,10 @@ async def run_command(client, args):
         command = command[1:]
     if not command:
         raise CloudError("Provide a command after --")
-    lease = await client.provision(args.name, args.purpose)
+    lease = await client.provision(
+        args.name, args.purpose,
+        api_level=args.api_level, width=args.width, height=args.height, dpi=args.dpi,
+    )
     lease_id = lease["id"]
     process = None
     try:
@@ -86,7 +89,10 @@ async def execute(args):
     client = CloudClient.from_env()
     try:
         if args.action == "provision":
-            lease = await client.provision(args.name, args.purpose, args.idempotency_key)
+            lease = await client.provision(
+                args.name, args.purpose, args.idempotency_key,
+                api_level=args.api_level, width=args.width, height=args.height, dpi=args.dpi,
+            )
             if args.wait:
                 try:
                     lease = await client.wait_active(lease, args.timeout)
@@ -101,6 +107,9 @@ async def execute(args):
         elif args.action == "leases":
             leases = await client.request("GET", "/v2/leases")
             emit(leases)
+        elif args.action == "device-options":
+            options = await client.request("GET", "/v1/device-options")
+            emit(options)
         elif args.action == "usage":
             usage = await client.request("GET", "/v1/usage")
             emit(usage)
@@ -131,6 +140,10 @@ def parser():
         item.add_argument("--name", default="Android device")
         item.add_argument("--purpose", choices=["development", "ci"], default="ci")
         item.add_argument("--timeout", type=int, default=600)
+        item.add_argument("--api-level", type=int, help="Android API level from adc device-options")
+        item.add_argument("--width", type=int, help="Display width in pixels")
+        item.add_argument("--height", type=int, help="Display height in pixels")
+        item.add_argument("--dpi", type=int, help="Display density in DPI")
     run.add_argument("command", nargs=argparse.REMAINDER)
     for name in ["release", "connect", "disconnect"]:
         item = sub.add_parser(name)
@@ -138,6 +151,7 @@ def parser():
         if name == "connect":
             item.add_argument("--port", type=int, default=0, help="Local ADB port; chooses an available port by default")
     sub.add_parser("leases")
+    sub.add_parser("device-options", help="List Android versions, display limits and device defaults")
     sub.add_parser("usage")
     return root
 

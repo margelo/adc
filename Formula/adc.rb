@@ -3,9 +3,9 @@ class Adc < Formula
 
   desc "CLI for Margelo Cloud Devices"
   homepage "https://platform.margelo.com"
-  url "https://github.com/margelo/adc/releases/download/v0.2.0/agent-device-cloud-cli-0.2.0.tar.gz"
-  sha256 "2b36ef60ea506b0258c75746289d208640c54e9cc5f24d3a2000daa2a379a8b9"
-  version "0.2.0"
+  url "https://github.com/margelo/adc/releases/download/v0.3.0/agent-device-cloud-cli-0.3.0.tar.gz"
+  sha256 "e1dd25e3393d4f6e353b8c762f758ca1060e2079221b09e88d39fdf1360379bf"
+  version "0.3.0"
 
   depends_on "python@3.14"
 
@@ -73,6 +73,8 @@ class Adc < Formula
   test do
     assert_match "On-demand Android devices", shell_output("#{bin}/adc --help")
     assert_match "--switch", shell_output("#{bin}/adc login --help")
+    assert_match "device-options", shell_output("#{bin}/adc --help")
+    assert_match "--api-level", shell_output("#{bin}/adc provision --help")
     refute_predicate bin/"adc-mcp", :exist?
   end
 end

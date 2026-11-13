@@ -21,18 +21,29 @@ Run `adc login` for a Platform-connected workspace, or set `ADC_API_KEY` to a Cl
 adc run --name smoke -- adb shell getprop sys.boot_completed
 ```
 
+Use `adc device-options` to list available Android API levels, display limits, and defaults. `adc provision` and `adc run` accept `--api-level`, `--width`, `--height`, and `--dpi` independently.
+
+```sh
+adc device-options
+adc run --name layout --api-level 35 --width 1080 --height 1920 --dpi 400 -- adb shell wm size
+```
+
 ## GitHub Actions
 
 Give the runner access to `adb` and store your Cloud Devices API key as the `ADC_API_KEY` repository secret. Add this step to your workflow.
 
 ```yaml
-- uses: margelo/adc@v0.2.0
+- uses: margelo/adc@v0.3.0
   with:
     api-key: ${{ secrets.ADC_API_KEY }}
+    api-level: '35'
+    width: '1080'
+    height: '1920'
+    dpi: '400'
     command: adb shell getprop sys.boot_completed
 ```
 
-The action uses the same CLI and releases the device when the command exits. Use `api-url` to select a different API environment.
+The action uses the same CLI and releases the device when the command exits. Each device setting is optional. Use `api-url` to select a different API environment.
 
 ## MCP
 
@@ -47,7 +58,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
         "--python",
         "3.12",
         "--from",
-        "agent-device-cloud-cli[mcp] @ git+https://github.com/margelo/adc.git@v0.2.0",
+        "agent-device-cloud-cli[mcp] @ git+https://github.com/margelo/adc.git@v0.3.0",
         "adc-mcp"
       ],
       "env": {
@@ -59,6 +70,8 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
 ```
 
 The server can provision, inspect, list, connect to, and release devices, and report usage. Install Android Platform Tools on the same machine to run the `adb` command returned by `connect_device`. Release the device when finished.
+
+Use `list_device_options` to discover the available settings. Pass `api_level`, `width`, `height`, or `dpi` to `provision_device` to customize the device.
 
 ## Build the release archive
 

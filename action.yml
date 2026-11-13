@@ -13,6 +13,18 @@ inputs:
   name:
     description: Lease name
     default: GitHub Actions
+  api-level:
+    description: Optional Android API level from adc device-options
+    required: false
+  width:
+    description: Optional display width in pixels
+    required: false
+  height:
+    description: Optional display height in pixels
+    required: false
+  dpi:
+    description: Optional display density in DPI
+    required: false
   provision-timeout-seconds:
     description: Maximum wait for a newly bootstrapped cloud device
     default: '600'
@@ -34,7 +46,24 @@ runs:
         ADC_API_KEY: ${{ inputs.api-key }}
         ADC_COMMAND: ${{ inputs.command }}
         ADC_NAME: ${{ inputs.name }}
+        ADC_API_LEVEL: ${{ inputs.api-level }}
+        ADC_WIDTH: ${{ inputs.width }}
+        ADC_HEIGHT: ${{ inputs.height }}
+        ADC_DPI: ${{ inputs.dpi }}
         ADC_TIMEOUT: ${{ inputs.provision-timeout-seconds }}
       run: |
         command -v adb >/dev/null || { echo 'Install Android platform-tools before using this action.' >&2; exit 1; }
-        adc run --name "$ADC_NAME" --purpose ci --timeout "$ADC_TIMEOUT" -- bash -euc "$ADC_COMMAND"
+        adc_args=(--name "$ADC_NAME" --purpose ci --timeout "$ADC_TIMEOUT")
+        if [[ -n "$ADC_API_LEVEL" ]]; then
+          adc_args+=(--api-level="$ADC_API_LEVEL")
+        fi
+        if [[ -n "$ADC_WIDTH" ]]; then
+          adc_args+=(--width="$ADC_WIDTH")
+        fi
+        if [[ -n "$ADC_HEIGHT" ]]; then
+          adc_args+=(--height="$ADC_HEIGHT")
+        fi
+        if [[ -n "$ADC_DPI" ]]; then
+          adc_args+=(--dpi="$ADC_DPI")
+        fi
+        adc run "${adc_args[@]}" -- bash -euc "$ADC_COMMAND"
