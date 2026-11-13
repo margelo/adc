@@ -33,7 +33,7 @@ async def run_command(client, args):
     process = None
     try:
         await client.wait_active(lease, args.timeout)
-        async with AdbRelay(client, lease_id) as relay:
+        async with AdbRelay(client, lease_id, booking_name=args.name) as relay:
             connected = await adb("connect", relay.serial)
             print(connected, file=sys.stderr)
             try:

@@ -90,7 +90,7 @@ async def connect_device(lease_id: str) -> dict:
         lease = await client.request("GET", f"/v2/leases/{lease_id}")
         if lease["status"] != "active":
             raise ValueError("The device must be active before connecting")
-        relay = AdbRelay(client, lease_id)
+        relay = AdbRelay(client, lease_id, booking_name=lease["name"])
         await relay.__aenter__()
     except BaseException:
         await client.close()

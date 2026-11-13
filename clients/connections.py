@@ -182,6 +182,7 @@ async def require_active(client, lease_id):
     lease = await client.request("GET", f"/v2/leases/{lease_id}")
     if lease["status"] != "active":
         raise CloudError("Only active leases can connect")
+    return lease
 
 
 async def serve_connection(lease_id, port, path, token):
@@ -238,7 +239,8 @@ async def serve_connection(lease_id, port, path, token):
             watcher = None
             try:
                 await connect_adb(relay.serial)
-                await require_active(client, lease_id)
+                lease = await require_active(client, lease_id)
+                relay.publish_label(lease["name"])
                 server = await asyncio.start_server(handle, "127.0.0.1", 0)
                 address = server.sockets[0].getsockname()
                 state = {"serial": relay.serial, "control_port": address[1], "token": token}

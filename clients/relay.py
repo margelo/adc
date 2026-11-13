@@ -1,6 +1,10 @@
 import asyncio
+import json
 import logging
+import os
 from contextlib import suppress
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from websockets.asyncio.client import connect
 
@@ -8,10 +12,12 @@ from clients.api import CloudClient
 
 
 class AdbRelay:
-    def __init__(self, client: CloudClient, lease_id: str, port: int = 0):
+    def __init__(self, client: CloudClient, lease_id: str, port: int = 0, *, booking_name: str | None = None):
         self.client = client
         self.lease_id = lease_id
         self.port = port
+        self.booking_name = booking_name
+        self.label_path: Path | None = None
         self.server = None
         self.closing = False
         self.tasks: set[asyncio.Task] = set()
@@ -25,16 +31,40 @@ class AdbRelay:
         self.server = await asyncio.start_server(self.handle, "127.0.0.1", self.port)
         address = self.server.sockets[0].getsockname()
         self.port = address[1]
+        try:
+            if self.booking_name is not None:
+                self.publish_label(self.booking_name)
+        except BaseException:
+            await self.__aexit__(None, None, None)
+            raise
         return self
+
+    def publish_label(self, name: str):
+        root = Path.home()
+        directory = root / ".local/state/agent-device-cloud/adb-labels"
+        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path = directory / f"{self.port}.json"
+        pid = os.getpid()
+        with NamedTemporaryFile(mode="w", encoding="utf-8", dir=directory, delete_on_close=False) as output:
+            json.dump({"name": name, "pid": pid}, output)
+            output.close()
+            staged = Path(output.name)
+            staged.replace(path)
+        self.label_path = path
 
     async def __aexit__(self, *_):
         self.closing = True
-        self.server.close()
-        tasks = list(self.tasks)
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-        await self.server.wait_closed()
+        try:
+            if self.label_path is not None:
+                self.label_path.unlink(missing_ok=True)
+                self.label_path = None
+        finally:
+            self.server.close()
+            tasks = list(self.tasks)
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            await self.server.wait_closed()
 
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         task = asyncio.current_task()

@@ -3,9 +3,9 @@ class Adc < Formula
 
   desc "CLI for Margelo Cloud Devices"
   homepage "https://platform.margelo.com"
-  url "https://github.com/margelo/adc/releases/download/v0.4.0/agent-device-cloud-cli-0.4.0.tar.gz"
-  sha256 "80497ebb9eeab2b3b6f746b993279b44342c8643e629b443180621b807d42d7e"
-  version "0.4.0"
+  url "https://github.com/margelo/adc/releases/download/v0.4.1/agent-device-cloud-cli-0.4.1.tar.gz"
+  sha256 "6b034e49a21bffb1ce8ffdf03ad07acc0d6d3a85bc9a8e1b6225df5e8bd3f7d8"
+  version "0.4.1"
 
   depends_on "python@3.14"
 
