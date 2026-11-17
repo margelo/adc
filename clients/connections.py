@@ -12,7 +12,7 @@ import subprocess
 import sys
 from contextlib import asynccontextmanager, suppress
 
-from clients.adb import adb, connect_adb
+from clients.adb import adb, adb_environment, connect_adb
 from clients.api import CloudClient, CloudError
 from clients.relay import AdbRelay
 
@@ -99,7 +99,7 @@ async def stop_process(process):
         await completion
 
 
-async def connect_device(client, lease_id, port=0):
+async def connect_device(client, lease_id, port=0, *, adb_burst=False):
     path = connection_path(client, lease_id)
     process = None
     try:
@@ -108,12 +108,14 @@ async def connect_device(client, lease_id, port=0):
             state = read_connection(path)
             if state is not None:
                 try:
-                    await control(state, "status")
+                    connection = await control(state, "status")
                 except (ConnectionRefusedError, StaleConnection):
                     path.unlink(missing_ok=True)
                 else:
                     if port and state["serial"] != f"127.0.0.1:{port}":
                         raise CloudError(f"Already connected at {state['serial']}; disconnect before changing the port")
+                    if adb_burst and "adb_server_socket" not in connection:
+                        raise CloudError("Already connected without ADB Burst; run adc disconnect before enabling it")
                     return await control(state, "connect")
             token = secrets.token_urlsafe(32)
             environment = os.environ.copy()
@@ -122,9 +124,15 @@ async def connect_device(client, lease_id, port=0):
             descriptor = os.open(log_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
             port_argument = str(port)
             state_argument = str(path)
+            command = [
+                sys.executable, "-m", "clients.connections", lease_id,
+                "--port", port_argument, "--state-file", state_argument,
+            ]
+            if adb_burst:
+                command.append("--adb-burst")
             with os.fdopen(descriptor, "w") as log:
                 process = subprocess.Popen(
-                    [sys.executable, "-m", "clients.connections", lease_id, "--port", port_argument, "--state-file", state_argument],
+                    command,
                     env=environment, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True,
                 )
             async with asyncio.timeout(40):
@@ -185,7 +193,7 @@ async def require_active(client, lease_id):
     return lease
 
 
-async def serve_connection(lease_id, port, path, token):
+async def serve_connection(lease_id, port, path, token, adb_burst):
     client = CloudClient.from_env()
     stopped = asyncio.Event()
     handlers = set()
@@ -193,7 +201,11 @@ async def serve_connection(lease_id, port, path, token):
     server = None
     closing = False
     try:
-        async with AdbRelay(client, lease_id, port) as relay:
+        async with AdbRelay(client, lease_id, port) as relay, adb_environment(adb_burst) as adb_env:
+            connection = {"serial": relay.serial}
+            if adb_env is not None:
+                connection["adb_server_socket"] = adb_env["ADB_SERVER_SOCKET"]
+
             async def handle(reader, writer):
                 task = asyncio.current_task()
                 handlers.add(task)
@@ -214,12 +226,12 @@ async def serve_connection(lease_id, port, path, token):
                             elif stopped.is_set():
                                 raise CloudError("The ADB connection is closing")
                             elif action == "connect":
-                                await connect_adb(relay.serial)
+                                await connect_adb(relay.serial, env=adb_env)
                                 if stopped.is_set():
                                     raise CloudError("The ADB connection is closing")
                             elif action != "status":
                                 raise CloudError("Unknown local connection action")
-                            response = {"serial": relay.serial}
+                            response = connection
                     except StaleConnection as error:
                         response = {"error": str(error), "code": "invalid_token"}
                     except Exception as error:
@@ -238,7 +250,7 @@ async def serve_connection(lease_id, port, path, token):
 
             watcher = None
             try:
-                await connect_adb(relay.serial)
+                await connect_adb(relay.serial, env=adb_env)
                 lease = await require_active(client, lease_id)
                 relay.publish_label(lease["name"])
                 server = await asyncio.start_server(handle, "127.0.0.1", 0)
@@ -258,8 +270,9 @@ async def serve_connection(lease_id, port, path, token):
                 if watcher is not None:
                     watcher.cancel()
                     await asyncio.gather(watcher, return_exceptions=True)
-                with suppress(CloudError, OSError):
-                    await adb("disconnect", relay.serial)
+                if adb_env is None:
+                    with suppress(CloudError, OSError):
+                        await adb("disconnect", relay.serial)
     finally:
         await client.close()
         if server is not None:
@@ -281,6 +294,7 @@ def main():
     parser.add_argument("lease_id")
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--state-file", type=Path, required=True)
+    parser.add_argument("--adb-burst", action="store_true")
     args = parser.parse_args()
     token = os.environ.pop("ADC_CONNECTION_TOKEN")
 
@@ -289,7 +303,7 @@ def main():
         task = asyncio.current_task()
         for signum in [signal.SIGINT, signal.SIGTERM]:
             loop.add_signal_handler(signum, task.cancel)
-        await serve_connection(args.lease_id, args.port, args.state_file, token)
+        await serve_connection(args.lease_id, args.port, args.state_file, token, args.adb_burst)
 
     with asyncio.Runner() as runner:
         try:

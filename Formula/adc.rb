@@ -3,9 +3,9 @@ class Adc < Formula
 
   desc "CLI for Margelo Cloud Devices"
   homepage "https://platform.margelo.com"
-  url "https://github.com/margelo/adc/releases/download/v0.4.1/agent-device-cloud-cli-0.4.1.tar.gz"
-  sha256 "6b034e49a21bffb1ce8ffdf03ad07acc0d6d3a85bc9a8e1b6225df5e8bd3f7d8"
-  version "0.4.1"
+  url "https://github.com/margelo/adc/releases/download/v0.5.0/agent-device-cloud-cli-0.5.0.tar.gz"
+  sha256 "287d27196d549a981579699ccb64b0fc4d1e4e3f0397752326e72f72f43cf4c9"
+  version "0.5.0"
 
   depends_on "python@3.14"
 
@@ -67,6 +67,8 @@ class Adc < Formula
     <<~EOS
       For commands that connect to devices with adb, install Android Platform Tools:
         brew install --cask android-platform-tools
+      To use adc mirror, also install scrcpy:
+        brew install scrcpy
     EOS
   end
 
@@ -76,6 +78,7 @@ class Adc < Formula
     assert_match "device-options", shell_output("#{bin}/adc --help")
     assert_match "--api-level", shell_output("#{bin}/adc provision --help")
     assert_match "--form-factor", shell_output("#{bin}/adc provision --help")
+    assert_match "--full-resolution", shell_output("#{bin}/adc mirror --help")
     refute_predicate bin/"adc-mcp", :exist?
   end
 end

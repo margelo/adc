@@ -2,11 +2,12 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import signal
 import sys
 from contextlib import suppress
 
-from clients.adb import adb
+from clients.adb import adb, adb_environment, connect_adb
 from clients.api import CloudClient, CloudError, configured_api_url
 from clients.connections import connect_device, disconnect_device
 from clients.credentials import CredentialError, load_credentials, remove_credentials
@@ -17,6 +18,44 @@ from clients.relay import AdbRelay
 def emit(value):
     rendered = json.dumps(value, indent=2)
     print(rendered)
+
+
+async def run_local_command(command, environment):
+    process = await asyncio.create_subprocess_exec(*command, env=environment)
+    try:
+        return await process.wait()
+    finally:
+        if process.returncode is None:
+            with suppress(ProcessLookupError):
+                process.terminate()
+            try:
+                async with asyncio.timeout(5):
+                    await process.wait()
+            except TimeoutError:
+                with suppress(ProcessLookupError):
+                    process.kill()
+                await process.wait()
+
+
+async def mirror_device(client, lease_id, full_resolution):
+    scrcpy = shutil.which("scrcpy")
+    if scrcpy is None:
+        raise CloudError("Install scrcpy and make it available on PATH to mirror a device")
+    connection = await connect_device(client, lease_id, adb_burst=True)
+    serial = connection["serial"]
+    environment = os.environ.copy()
+    environment.update(ADB_SERVER_SOCKET=connection["adb_server_socket"], ADB_BURST_MODE="1", ANDROID_SERIAL=serial)
+    if full_resolution:
+        max_size = 0
+    else:
+        max_size = 960
+        print(
+            "The preview limits the stream to 960 px on its longest side to reduce encoding load. "
+            "Use --full-resolution for a sharper preview that may run less smoothly.",
+            file=sys.stderr,
+        )
+    command = [scrcpy, f"--serial={serial}", f"--max-size={max_size}"]
+    return await run_local_command(command, environment)
 
 
 async def run_command(client, args):
@@ -30,32 +69,22 @@ async def run_command(client, args):
         form_factor=args.form_factor, api_level=args.api_level, width=args.width, height=args.height, dpi=args.dpi,
     )
     lease_id = lease["id"]
-    process = None
     try:
         await client.wait_active(lease, args.timeout)
-        async with AdbRelay(client, lease_id, booking_name=args.name) as relay:
-            connected = await adb("connect", relay.serial)
-            print(connected, file=sys.stderr)
+        async with AdbRelay(client, lease_id, booking_name=args.name) as relay, adb_environment(args.adb_burst) as adb_env:
             try:
-                state = await adb("-s", relay.serial, "get-state")
-                if state != "device":
-                    raise CloudError(f"ADB device is not ready: {state}")
+                connected = await connect_adb(relay.serial, env=adb_env)
+                print(connected, file=sys.stderr)
                 environment = os.environ.copy()
+                if adb_env is not None:
+                    environment.update(adb_env)
                 environment.update(ANDROID_SERIAL=relay.serial, ADC_LEASE_ID=lease_id)
-                process = await asyncio.create_subprocess_exec(*command, env=environment)
-                return await process.wait()
+                return await run_local_command(command, environment)
             finally:
-                with suppress(CloudError):
-                    await adb("disconnect", relay.serial)
+                if adb_env is None:
+                    with suppress(CloudError):
+                        await adb("disconnect", relay.serial)
     finally:
-        if process is not None and process.returncode is None:
-            process.terminate()
-            try:
-                completion = process.wait()
-                await asyncio.wait_for(completion, timeout=5)
-            except TimeoutError:
-                process.kill()
-                await process.wait()
         await client.release(lease_id)
 
 
@@ -114,11 +143,13 @@ async def execute(args):
             usage = await client.request("GET", "/v1/usage")
             emit(usage)
         elif args.action == "connect":
-            connection = await connect_device(client, args.lease_id, args.port)
+            connection = await connect_device(client, args.lease_id, args.port, adb_burst=args.adb_burst)
             emit(connection)
         elif args.action == "disconnect":
             disconnected = await disconnect_device(client, args.lease_id)
             emit({"lease_id": args.lease_id, "disconnected": disconnected})
+        elif args.action == "mirror":
+            return await mirror_device(client, args.lease_id, args.full_resolution)
         elif args.action == "run":
             return await run_command(client, args)
         return 0
@@ -136,6 +167,7 @@ def parser():
     provision.add_argument("--wait", action="store_true")
     provision.add_argument("--idempotency-key")
     run = sub.add_parser("run", help="Acquire, connect, run a command and release")
+    run.add_argument("--adb-burst", action="store_true", help="Use a dedicated local ADB server with Burst mode")
     for item in [provision, run]:
         item.add_argument("--name", default="Android device")
         item.add_argument("--purpose", choices=["development", "ci"], default="ci")
@@ -146,11 +178,15 @@ def parser():
         item.add_argument("--height", type=int, help="Display height in pixels")
         item.add_argument("--dpi", type=int, help="Display density in DPI")
     run.add_argument("command", nargs=argparse.REMAINDER)
+    mirror = sub.add_parser("mirror", help="Open a scrcpy preview for an active lease using ADB Burst")
+    mirror.add_argument("lease_id")
+    mirror.add_argument("--full-resolution", action="store_true", help="Use native stream dimensions instead of the 960 px cap")
     for name in ["release", "connect", "disconnect"]:
         item = sub.add_parser(name)
         item.add_argument("lease_id")
         if name == "connect":
             item.add_argument("--port", type=int, default=0, help="Local ADB port; chooses an available port by default")
+            item.add_argument("--adb-burst", action="store_true", help="Use a dedicated local ADB server with Burst mode")
     sub.add_parser("leases")
     sub.add_parser("device-options", help="List device form factors, Android versions and display settings")
     sub.add_parser("usage")

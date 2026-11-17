@@ -29,12 +29,28 @@ adc provision --form-factor tv --wait
 adc run --name layout --api-level 35 --width 1080 --height 1920 --dpi 400 -- adb shell wm size
 ```
 
+### Mirror a leased device
+
+Install [scrcpy](https://github.com/Genymobile/scrcpy) and Android SDK Platform-Tools 36.0.0 or newer.
+
+```sh
+brew install scrcpy
+adc mirror LEASE_ID
+adc mirror LEASE_ID --full-resolution
+```
+
+The default mirror limits the video to 960 pixels on its longest side to reduce encoding load. Use `--full-resolution` for a sharper stream. Both commands use ADB Burst on a dedicated local ADB server.
+
+If the lease already has a standard ADB connection, run `adc disconnect LEASE_ID` before opening the mirror. Closing the scrcpy window keeps the lease and local connection active. Use `adc disconnect LEASE_ID` to close the local connection and `adc release LEASE_ID` when you finish using the device.
+
+Use `adc connect LEASE_ID --adb-burst` to opt in without opening a mirror. Run commands against the returned serial with `ADB_SERVER_SOCKET` set to `adb_server_socket` from the command's JSON output. For a disposable lease, `adc run --adb-burst -- COMMAND` sets the socket and `ANDROID_SERIAL` for the command and releases the lease when it exits.
+
 ## GitHub Actions
 
 Give the runner access to `adb` and store your Cloud Devices API key as the `ADC_API_KEY` repository secret. Add this step to your workflow.
 
 ```yaml
-- uses: margelo/adc@v0.4.1
+- uses: margelo/adc@v0.5.0
   with:
     api-key: ${{ secrets.ADC_API_KEY }}
     api-level: '35'
@@ -59,7 +75,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
         "--python",
         "3.12",
         "--from",
-        "agent-device-cloud-cli[mcp] @ git+https://github.com/margelo/adc.git@v0.4.1",
+        "agent-device-cloud-cli[mcp] @ git+https://github.com/margelo/adc.git@v0.5.0",
         "adc-mcp"
       ],
       "env": {
