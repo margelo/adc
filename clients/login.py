@@ -12,7 +12,7 @@ from clients.api import CloudError, normalize_api_url
 from clients.credentials import Credentials, save_credentials
 
 
-DEFAULT_WEB_URL = 'https://platform.margelo.com'
+DEFAULT_WEB_URL = 'https://platform.callstack.com'
 
 
 def configured_web_url() -> str:
