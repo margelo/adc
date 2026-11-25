@@ -2,10 +2,10 @@ class Adc < Formula
   include Language::Python::Virtualenv
 
   desc "CLI for Margelo Cloud Devices"
-  homepage "https://platform.margelo.com"
-  url "https://github.com/margelo/adc/releases/download/v0.5.0/agent-device-cloud-cli-0.5.0.tar.gz"
-  sha256 "287d27196d549a981579699ccb64b0fc4d1e4e3f0397752326e72f72f43cf4c9"
-  version "0.5.0"
+  homepage "https://platform.callstack.com"
+  url "https://github.com/margelo/adc/releases/download/v0.5.1/agent-device-cloud-cli-0.5.1.tar.gz"
+  sha256 "4f2c3c3d83ad0b434e11908bc78c346f347b094f16bcf911ae44fcb47f3a456d"
+  version "0.5.1"
 
   depends_on "python@3.14"
 

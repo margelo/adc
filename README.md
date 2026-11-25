@@ -50,7 +50,7 @@ Use `adc connect LEASE_ID --adb-burst` to opt in without opening a mirror. Run c
 Give the runner access to `adb` and store your Cloud Devices API key as the `ADC_API_KEY` repository secret. Add this step to your workflow.
 
 ```yaml
-- uses: margelo/adc@v0.5.0
+- uses: margelo/adc@v0.5.1
   with:
     api-key: ${{ secrets.ADC_API_KEY }}
     api-level: '35'
@@ -75,7 +75,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
         "--python",
         "3.12",
         "--from",
-        "agent-device-cloud-cli[mcp] @ git+https://github.com/margelo/adc.git@v0.5.0",
+        "agent-device-cloud-cli[mcp] @ git+https://github.com/margelo/adc.git@v0.5.1",
         "adc-mcp"
       ],
       "env": {
